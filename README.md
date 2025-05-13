@@ -1,54 +1,79 @@
- Questo task misura i giudizi di ordine temporale (TOJ) su coppie audiovisive.
-# Ad ogni trial vengono presentati un suono e un flash visivo a SOA variabile
-# (da –300 ms a +300 ms, escluso 0), e il partecipante risponde quale
-# dei due è apparso per primo (m = “visivo primo”, z = “suono primo”).
-#
-# 1) Struttura dei trial e timing generale
-#    • Ogni trial inizia con una croce di fissazione (700 ms) seguita da:
-#         – un ISI medio di 1200 ms ± jitter di ±300 ms
-#         – uno schermo vuoto (“blank”) di 300 ms
-#      Questo garantisce che il fixation-cross e il primo stimolo non si
-#      sovrappongano mai.
-#
-#    • L’orologio RT viene avviato una sola volta all’inizio dell’esperimento
-#      (rt_clock = core.Clock()), così da avere misure di RT affidabili senza
-#      ricreare un nuovo clock a ogni trial.
-#
-# 2) Controllo di precisione di SOA e durata degli stimoli
-#    • Per misurare l’effettivo intervallo tra le due modalità (SOA) si usa
-#      core.Clock() (“soa_clock”) e non un semplice sleep(). Sleep() di Open
-#      Sesame / Psychopy è dipendente dal SO, mentre soa_clock.getTime()
-#      fornisce una misura in millisecondi totalmente indipendente.
-#
-#    • Nella condizione SOA < 0 (suono primo):
-#        soa_clock.reset()
-#        my_sampler.play()
-#        clock.sleep(abs(soa))           # attende il SOA programmato
-#        soa_duration = soa_clock.getTime() * 1000
-#        visual_canvas.show()
-#        … (misura flip e stim_duration come descritto di seguito)
-#
-#    • Invece per SOA > 0 (visivo primo) l’ordine di play() e show() è invertito.
-#
-# 3) Durata controllata degli stimoli (33 ms)
-#    • Per garantire esattamente 33 ms di esposizione visiva su un monitor
-#      a 60 Hz, si ricorre a:
-#         flip_clock = core.Clock()
-#         win.flip()                     # sync con refresh del display
-#         core.wait(2 * (1/60))          # circa 33.3 ms (2 refresh)
-#      win.flip() “blocca” il frame finché il monitor non lo disegna, evitando
-#      ritardi di sistema.
-#
-# 4) Logica di risposta e salvataggio
-#    • Al termine della presentazione avviamo un timeout di 2000 ms su
-#      my_keyboard.get_key(), raccogliendo key e rt.
-#    • Calcoliamo accuracy = 1 se la chiave corrisponde all’ordine reale
-#      (m per visivo primo quando soa>0, z per suono primo quando soa<0).
-#    • I dati di ogni trial (SOA, key, RT, accuracy, ISI, jitter, start/end time,
-#      block) vengono salvati in un CSV dedicato per ciascun soggetto.
-#
-# 5) Suddivisione in fasi
-#    • PREPARE_PHASE: inizializzazione trial_counter, blocchi, caricamento
-#      stimoli, creazione Canvas/Sampler/Keyboard.
-#    • RUN_PHASE: presentazione fixation / blank / stimoli, gestione SOA,
-#      raccolta risposta, salvataggio dati, pulizia schermo.
+In questo compito i partecipanti giudicano quale dei due stimoli, audio o visivo, sia arrivato per primo. Ad ogni prova (trial) viene presentata una coppia di stimoli con un differente Stimulus Onset Asynchrony (SOA) che va da –300 ms (suono prima) a +300 ms (visivo prima), con passi di 50 ms e senza condizioni di simultaneità perfetta (SOA = 0).
+
+1. Logica delle risposte
+Tasti usati:
+
+‘m’ = “stimolo visivo prima”
+
+‘z’ = “stimolo sonoro prima”
+
+Per i soggetti con ID > 131 la mappatura è invertita (per un errore sperimentale): in quel sotto-gruppo, ‘m’ e ‘z’ vengono scambiate.
+
+2. Struttura temporale di ogni trial
+Fixation Cross
+
+Croce centrale mostrata per 700 ms.
+
+Inter‐Stimulus Interval (ISI)
+
+Dopo la croce, schermo vuoto (“blank screen”) di 300 ms
+
+Quindi attesa di un ISI medio di 1200 ms ± jitter (± 300 ms).
+
+Presentazione stimoli
+
+Un orologio ad alta precisione (core.Clock()) viene resettato immediatamente prima della presentazione del primo stimolo.
+
+Se SOA < 0:
+
+viene riprodotto subito il suono;
+
+si aspetta abs(SOA) ms;
+
+viene mostrato il flash visivo (33 ms).
+
+Se SOA > 0:
+
+viene mostrato subito il flash visivo (33 ms);
+
+si aspetta SOA ms;
+
+viene riprodotto il suono.
+
+In tutti i casi misuriamo con soa_clock.getTime() il vero intervallo tra i due stimoli, moltiplicando per 1000 per ottenere i millisecondi effettivi.
+
+La durata del flash visivo è garantita da due cicli di win.flip() (≈ 33 ms totali), sincronizzati con il refresh del monitor per evitare drift.
+
+3. Misurazione dei tempi di reazione (RT)
+All’inizio di ogni prova il codice salva start_time = rt_clock.getTime()
+
+Alla pressione del tasto la variabile rt viene calcolata come end_time – start_time
+
+Se non c’è risposta entro 2 s, viene registrato un timeout.
+
+4. Salvataggio dei dati
+Per ogni trial vengono registrati in un file CSV:
+
+mathematica
+Copia
+SOA | Response | RT (s) | Accuracy | ISI | Jitter | Start_time (s) | End_time (s) | Block
+Accuracy = 1 se la risposta corrisponde alla vera prima occorrenza dello stimolo (tenendo conto anche dell’inversione mappatura), 0 altrimenti.
+
+5. Perché usare core.Clock()
+Precisione: misura in secondi con float, indipendente dal sistema operativo.
+
+Affidabilità: core.sleep() blocca il codice ma non dà tempi di misura, mentre Clock registra esattamente i tempi di evento.
+
+Nota finale
+Questo schema assicura che:
+
+ogni intervallo (fixation, blank, SOA) venga misurato e verificato;
+
+la durata visiva (33 ms) coincida con due refresh del monitor;
+
+i tempi di reazione siano calcolati in modo accurato e non distorti da funzioni di sospensione del thread.
+
+
+
+
+
