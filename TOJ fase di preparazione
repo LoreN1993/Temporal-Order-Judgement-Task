@@ -1,0 +1,33 @@
+# ==============================
+# 1. PREPARE PHASE
+#    Definisco i blocchi, i contatori e preparo stimoli e device
+# ==============================
+
+# —– Contatori e blocchi —–
+if 'trial_counter' not in globals():
+    trial_counter = 0
+
+num_trial_practice = 12
+num_trial_task     = 60
+total_trials       = num_trial_practice + 4 * num_trial_task  # pratica + 4 blocchi task
+
+# Ottengo il nome del loop corrente da OpenSesame e assegno il numero di blocco
+loop_name = var.current_loop  # deve esistere in ciascun ciclo
+if   loop_name == 'Practice_loop': block_counter = 1
+elif loop_name == 'Task_1':       block_counter = 2
+elif loop_name == 'Task_2':       block_counter = 3
+elif loop_name == 'Task_3':       block_counter = 4
+elif loop_name == 'Task_4':       block_counter = 5
+else:
+    raise ValueError(f"Loop non riconosciuto: {loop_name}")
+
+# —– Caricamento e preparazione degli stimoli —–
+visual_stimulus   = pool['circle_opaque_gold (1).png']
+auditory_stimulus = pool['beep_33ms.wav']
+
+visual_canvas = Canvas()  # canvas per stimolo visivo
+blank_canvas  = Canvas()  # canvas vuoto
+visual_canvas.image(visual_stimulus, scale=0.25)
+
+my_sampler  = Sampler(auditory_stimulus)
+my_keyboard = Keyboard(keylist=['m','z'], timeout=None)
