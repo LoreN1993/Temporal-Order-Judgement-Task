@@ -1,0 +1,105 @@
+# ==============================
+# 2. RUN PHASE SETUP
+#    Import, funzione di salvataggio e variabili sperimentali
+# ==============================
+
+import random, os, csv
+from psychopy import core
+
+def salva_dati(soa, key, rt, accuracy, isi, jitter, start_time, end_time, block):
+    """Salva le variabili del trial in un CSV dedicato al soggetto."""
+    path_to_save = os.path.expanduser('~/Desktop/Lorenzo_dati/Resultati_TOJ')
+    os.makedirs(path_to_save, exist_ok=True)
+    subj = var.subject_nr
+    file_path = os.path.join(path_to_save, f"subject_{subj}_toj.csv")
+    if not os.path.exists(file_path):
+        with open(file_path,'w',newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['SOA','Response','RT','Accuracy','ISI','Jitter','Start','End','Block'])
+    with open(file_path,'a',newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([soa, key, f"{rt:.3f}" if isinstance(rt,(int,float)) else rt,
+                         accuracy, isi, jitter, f"{start_time:.3f}", f"{end_time:.3f}", block])
+
+# Parametri di timing
+isi_medio         = 1200
+jittering         = random.randint(-300,300)
+interval_duration = 300
+sound_duration    = 33
+
+# Inizializzo l’orologio RT una sola volta
+if trial_counter == 0:
+    rt_clock = core.Clock()
+
+# ==============================
+# 3. TRIAL CONTROL
+#    Incremento contatore e verifiche
+# ==============================
+trial_counter += 1
+if trial_counter > total_trials:
+    raise ValueError("Superato numero totale di trial")
+
+# ==============================
+# 4. FIXATION CROSS
+#    Mostro la croce di fissazione con jitter ISI
+# ==============================
+isi_casuale = isi_medio + jittering
+core.wait(isi_casuale/1000)
+fix = canvas(exp)
+fix.line(sx=0, sy=-30, ex=0, ey=30, penwidth=0.6)
+fix.line(sx=-30,sy=0, ex=30, ey=0, penwidth=0.6)
+fix.show()
+core.wait(0.700)  # 700ms
+
+# ==============================
+# 5. BLANK SCREEN & START TIMING
+#    Schermo vuoto prima degli stimoli + registro start_time
+# ==============================
+blank_canvas.show()
+core.wait(interval_duration/1000)
+start_time = rt_clock.getTime()
+
+# ==============================
+# 6. PRESENTAZIONE STIMOLI (SOA)
+#    Logica per SOA negativo, positivo o zero
+# ==============================
+soa_clock = core.Clock()
+if soa < 0:
+    soa_clock.reset()
+    my_sampler.play()
+    core.wait(abs(soa)/1000)
+    soa_dur = soa_clock.getTime()*1000
+    visual_canvas.show(); win.flip()
+elif soa > 0:
+    visual_canvas.show(); win.flip()
+    core.wait((1/60.0)*2)
+    soa_clock.reset()
+    core.wait(soa/1000)
+    my_sampler.play()
+else:
+    # simultanei
+    soa_clock.reset()
+    my_sampler.play()
+    visual_canvas.show(); win.flip()
+
+# ==============================
+# 7. RESPONSE & ACCURACY
+#    Ricevo tasto, calcolo RT e accuratezza
+# ==============================
+key, rt = my_keyboard.get_key(timeout=2.0)
+end_time = rt_clock.getTime()
+if key is None:
+    rt, accuracy = 'timeout', 0
+else:
+    rt = end_time - start_time
+    if soa < 0 and key=='m':      accuracy = 1
+    elif soa > 0 and key=='z':    accuracy = 1
+    else:                          accuracy = 0
+
+# ==============================
+# 8. SAVE & CLEANUP
+#    Scrivo i dati e volto a schermo vuoto
+# ==============================
+salva_dati(soa, key, rt, accuracy, isi_casuale, jittering, start_time, end_time, block_counter)
+blank_canvas.show()
+core.wait(0.500)  # pausa 500ms tra i trial
